@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangChain Agents & Memory - Complete Guide</title>
+    <style>
+        :root {
+            /* Color Palette */
+            --bg-body: #f3f4f6;
+            --bg-paper: #ffffff;
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --accent-purple: #7c3aed;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            
+            /* Code Colors (VS Code Dark Theme) */
+            --code-bg: #1e1e1e;
+            --code-fg: #d4d4d4;
+            --keyword: #c586c0;
+            --string: #ce9178;
+            --function: #dcdcaa;
+            --comment: #6a9955;
+            --number: #b5cea8;
+        }
+
+        /* RESET & BASE */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--bg-paper);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        header p {
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+
+        /* CONTENT PADDING */
+        .content {
+            padding: 50px;
+        }
+
+        /* TYPOGRAPHY */
+        h2 {
+            font-size: 2rem;
+            color: #111827;
+            margin-top: 60px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-top: 40px;
+            margin-bottom: 15px;
+        }
+
+        p { margin-bottom: 1.2rem; }
+        
+        /* LISTS */
+        ul { margin-left: 20px; margin-bottom: 20px; }
+        li { margin-bottom: 8px; }
+
+        .learning-checklist {
+            background: var(--primary-light);
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 6px solid var(--primary);
+            margin-bottom: 40px;
+        }
+        
+        .learning-checklist ul { list-style: none; margin: 0; }
+        .learning-checklist li::before { content: "✅ "; margin-right: 8px; }
+
+        /* VS CODE STYLE BLOCKS */
+        .code-window {
+            background: var(--code-bg);
+            border-radius: 8px;
+            margin: 25px 0;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        .window-header {
+            background: #2d2d2d;
+            padding: 8px 15px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid #3e3e3e;
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .red { background: #ff5f56; }
+        .yellow { background: #ffbd2e; }
+        .green { background: #27c93f; }
+        
+        .code-title { color: #888; margin-left: 10px; font-family: monospace; font-size: 12px; }
+
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            color: var(--code-fg);
+            font-family: 'Fira Code', 'Consolas', monospace;
+            white-space: pre;
+        }
+
+        /* Syntax Highlighting */
+        .kwd { color: var(--keyword); }
+        .str { color: var(--string); }
+        .fun { color: var(--function); }
+        .com { color: var(--comment); font-style: italic; }
+        .num { color: var(--number); }
+
+        /* DIAGRAMS & CARDS */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        @media (max-width: 768px) { .comparison-grid { grid-template-columns: 1fr; } }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            background: white;
+        }
+
+        .card.chain { border-top: 5px solid #64748b; }
+        .card.agent { border-top: 5px solid var(--primary); }
+
+        .diagram-box {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .flow-h { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .box-node { background: white; border: 2px solid #333; padding: 10px 20px; border-radius: 6px; font-weight: bold; }
+        .arrow { font-size: 20px; color: #94a3b8; }
+        
+        /* ReAct Loop */
+        .react-timeline {
+            border-left: 3px solid var(--border);
+            margin-left: 20px;
+            padding-left: 30px;
+            position: relative;
+        }
+        .react-step { position: relative; margin-bottom: 20px; }
+        .react-step::before {
+            content: ''; position: absolute; left: -41px; top: 0;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: white; border: 4px solid var(--primary);
+        }
+
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid var(--border); padding: 12px; text-align: left; }
+        th { background: #f8fafc; font-weight: 600; color: #374151; }
+
+        /* MEMORY CHAT BUBBLES */
+        .chat-ui { background: #f1f5f9; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 0.95rem; }
+        .user { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+        .bot { align-self: flex-start; background: white; border: 1px solid var(--border); color: #333; border-bottom-left-radius: 2px; }
+        .system-msg { text-align: center; font-size: 0.8rem; color: #9ca3af; margin: 5px 0; }
+
+        hr { border: 0; border-top: 1px solid var(--border); margin: 30px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>LANGCHAIN AGENTS & MEMORY</h1>
+        <p>Complete Guide: Understanding Agents, Tools, Memory, and Advanced Concepts</p>
+    </header>
+
+    <div class="content">
+
+        <div class="learning-checklist">
+            <h2>🎯 WHAT YOU'LL LEARN</h2>
+            <ul>
+                <li>What are Agents and why they're powerful</li>
+                <li>How Agents differ from Chains</li>
+                <li>Types of Agents and when to use them</li>
+                <li>Tools: How Agents interact with the world</li>
+                <li>Memory: Making AI remember conversations</li>
+                <li>Complete hands-on projects</li>
+            </ul>
+        </div>
+
+        <section>
+            <h2>CHAPTER 1: UNDERSTANDING AGENTS - The Smart Decision Makers</h2>
+
+            <h3>🤖 What is an Agent?</h3>
+            <p><strong>Simple Definition:</strong> An <strong>Agent</strong> is an AI that can <strong>THINK</strong>, <strong>DECIDE</strong>, and <strong>USE TOOLS</strong> to accomplish a task.</p>
+
+            <h3>🔄 Chain vs Agent (Critical Difference!)</h3>
+            
+            <div class="comparison-grid">
+                <div class="card chain">
+                    <h3>⛓️ CHAIN (The Recipe)</h3>
+                    <div class="diagram-box">
+                        <small>Linear Path</small><br><br>
+                        Input → LLM → Output
+                    </div>
+                    <p><strong>Behavior:</strong> Fixed path, no decisions.</p>
+                    <p><strong>Analogy:</strong> Following a strict recipe.</p>
+                    <ul>
+                        <li>Step 1: Boil water</li>
+                        <li>Step 2: Add pasta</li>
+                        <li>Step 3: Cook 10 mins</li>
+                    </ul>
+                    <div style="background:#f1f5f9; padding:10px; border-radius:6px; margin-top:10px;">
+                        <strong>Use when:</strong> Task is predictable (e.g., Translation).
+                    </div>
+                </div>
+
+                <div class="card agent">
+                    <h3>🕵️ AGENT (The Chef)</h3>
+                    <div class="diagram-box">
+                        <small>Dynamic Loop</small><br><br>
+                        Goal → <strong>Think</strong> ⟳ Tools → Result
+                    </div>
+                    <p><strong>Behavior:</strong> Thinks, decides, adapts.</p>
+                    <p><strong>Analogy:</strong> A Chef cooking.</p>
+                    <ul>
+                        <li>Goal: Make dinner</li>
+                        <li><em>Thinks:</em> "No pasta? I'll make rice."</li>
+                        <li><em>Uses:</em> Stove, Pantry.</li>
+                    </ul>
+                    <div style="background:#eff6ff; padding:10px; border-radius:6px; margin-top:10px;">
+                        <strong>Use when:</strong> Multi-step tasks requiring external tools.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>CHAPTER 2: HOW AGENTS WORK - The ReAct Framework</h2>
+            
+
+            <h3>🧠 The ReAct Pattern (Reasoning + Acting)</h3>
+            <p>Agents use a pattern called <strong>ReAct</strong>:</p>
+            <div class="react-timeline">
+                <div class="react-step">
+                    <strong>1. THOUGHT</strong><br>Agent thinks about what to do next.
+                </div>
+                <div class="react-step">
+                    <strong>2. ACTION</strong><br>Agent decides which tool to use.
+                </div>
+                <div class="react-step">
+                    <strong>3. OBSERVATION</strong><br>Agent sees the result from the tool.
+                </div>
+                <div class="react-step" style="border: none;">
+                    <strong>4. REPEAT</strong><br>Loop continues until the final answer is found.
+                </div>
+            </div>
+
+            <h3>The Agent Loop (Visual)</h3>
+            <div class="diagram-box" style="text-align:left;">
+                <p><strong>USER:</strong> "What's 25 * 17 + 100?"</p>
+                <hr>
+                <p>🔽 <strong>THOUGHT 1:</strong> "I need to calculate 25 * 17 first."</p>
+                <p>⚙️ <strong>ACTION 1:</strong> Use Calculator [Input: 25*17]</p>
+                <p>👀 <strong>OBSERVATION 1:</strong> 425</p>
+                <br>
+                <p>🔽 <strong>THOUGHT 2:</strong> "Now add 100 to 425."</p>
+                <p>⚙️ <strong>ACTION 2:</strong> Use Calculator [Input: 425+100]</p>
+                <p>👀 <strong>OBSERVATION 2:</strong> 525</p>
+                <hr>
+                <p>🏁 <strong>FINAL ANSWER:</strong> "The answer is 525"</p>
+            </div>
+
+            <h3>Real ReAct Example Output</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">Terminal Output</span>
+                </div>
+<pre>
+Question: What's the weather in Paris and should I bring an umbrella?
+
+Thought: I need to find the current weather in Paris
+Action: weather_tool
+Action Input: Paris
+Observation: Current weather: Rainy, 15°C, 80% chance of rain
+
+Thought: It's rainy, so an umbrella is recommended
+Final Answer: The weather in Paris is rainy (15°C). Yes, you should 
+definitely bring an umbrella as there's an 80% chance of rain.
+</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>CHAPTER 3: TOOLS - Giving Agents Superpowers</h2>
+
+            <h3>🛠️ What are Tools?</h3>
+            <p><strong>Tools</strong> are functions capabilities that agents can use. Think of them as the agent's <strong>hands</strong>.</p>
+
+            <div class="comparison-grid">
+                <div>
+                    <strong>🔍 Search Tools</strong>
+                    <ul><li>Google Search</li><li>Wikipedia</li></ul>
+                </div>
+                <div>
+                    <strong>🧮 Calculation Tools</strong>
+                    <ul><li>Calculator</li><li>Python REPL</li></ul>
+                </div>
+                <div>
+                    <strong>📊 Data Tools</strong>
+                    <ul><li>SQL Database</li><li>API Calls</li></ul>
+                </div>
+                <div>
+                    <strong>📝 Action Tools</strong>
+                    <ul><li>Send Emails</li><li>Write Files</li></ul>
+                </div>
+            </div>
+
+            <h3>Anatomy of a Tool</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">tool_structure.py</span>
+                </div>
+<pre>
+Tool(
+    <span class="str">name</span>="calculator",          <span class="com"># 1. NAME: What it's called</span>
+    <span class="str">description</span>="Useful for math", <span class="com"># 2. DESC: When to use it</span>
+    <span class="str">func</span>=calculate_function     <span class="com"># 3. FUNC: What it does</span>
+)
+</pre>
+            </div>
+
+            <h3>EXAMPLE 1: Creating a Simple Custom Tool</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example1_custom_tool.py</span>
+                </div>
+<pre>
+<span class="com"># Imports</span>
+<span class="kwd">from</span> langchain.agents <span class="kwd">import</span> Tool
+<span class="kwd">from</span> langchain_google_genai <span class="kwd">import</span> ChatGoogleGenerativeAI
+<span class="kwd">import</span> os
+
+<span class="com"># Setup API</span>
+os.environ[<span class="str">"GOOGLE_API_KEY"</span>] = <span class="str">"YOUR_API_KEY_HERE"</span>
+
+<span class="com"># Step 1: Define a simple tool function</span>
+<span class="kwd">def</span> <span class="fun">get_word_length</span>(word: str) -> str:
+    <span class="str">"""Returns the length of a word"""</span>
+    <span class="kwd">return</span> f<span class="str">"The word '{word}' has {len(word)} letters."</span>
+
+<span class="com"># Step 2: Create a Tool object</span>
+word_length_tool = Tool(
+    name=<span class="str">"WordLength"</span>,
+    func=get_word_length,
+    description=<span class="str">"Useful when you need to find how many letters are in a word."</span>
+)
+
+<span class="com"># Step 3: Test the tool directly</span>
+<span class="fun">print</span>(word_length_tool.run(<span class="str">"elephant"</span>))
+<span class="com"># Output: The word 'elephant' has 8 letters.</span>
+</pre>
+            </div>
+
+            <h3>EXAMPLE 2: Multiple Tools - Calculator & Word Counter</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example2_multi_tools.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.tools <span class="kwd">import</span> Tool
+
+<span class="com"># Tool 1: Calculator</span>
+<span class="kwd">def</span> <span class="fun">calculator</span>(expression: str) -> str:
+    <span class="kwd">try</span>:
+        result = <span class="fun">eval</span>(expression)
+        <span class="kwd">return</span> f<span class="str">"The result is: {result}"</span>
+    <span class="kwd">except</span>:
+        <span class="kwd">return</span> <span class="str">"Invalid math expression"</span>
+
+calc_tool = Tool(
+    name=<span class="str">"Calculator"</span>,
+    func=calculator,
+    description=<span class="str">"Useful for math. Input: expression like '25 * 4'"</span>
+)
+
+<span class="com"># Tool 2: Word Counter</span>
+<span class="kwd">def</span> <span class="fun">count_words</span>(text: str) -> str:
+    word_count = <span class="fun">len</span>(text.split())
+    <span class="kwd">return</span> f<span class="str">"The text has {word_count} words."</span>
+
+word_counter_tool = Tool(
+    name=<span class="str">"WordCounter"</span>,
+    func=count_words,
+    description=<span class="str">"Counts words in text."</span>
+)
+
+<span class="com"># Test both tools</span>
+<span class="fun">print</span>(calc_tool.run(<span class="str">"100 + 50 * 2"</span>))
+<span class="fun">print</span>(word_counter_tool.run(<span class="str">"The quick brown fox jumps"</span>))
+</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>CHAPTER 4: CREATING YOUR FIRST AGENT</h2>
+
+            <h3>🎬 Agent Components & Architecture</h3>
+            <div class="diagram-box">
+                <strong>AGENT EXECUTOR</strong> (The Loop Manager)
+                <div style="border:1px solid #999; padding:20px; margin-top:10px; border-radius:8px;">
+                    <div style="display:flex; justify-content:space-around; align-items:center;">
+                        <div class="box-node" style="background:#e0e7ff; border-color:var(--primary);">
+                            🧠 AGENT (Brain)<br>LLM + Prompt
+                        </div>
+                        <div class="arrow">↔️</div>
+                        <div class="box-node" style="background:#f3e8ff; border-color:var(--accent-purple);">
+                            🛠️ TOOLS (Hands)<br>[Calc] [Search]
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>EXAMPLE 3: Building Your First Agent</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example3_first_agent.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.agents <span class="kwd">import</span> create_react_agent, AgentExecutor
+<span class="kwd">from</span> langchain <span class="kwd">import</span> hub
+<span class="kwd">from</span> langchain_google_genai <span class="kwd">import</span> ChatGoogleGenerativeAI
+<span class="kwd">from</span> langchain.tools <span class="kwd">import</span> Tool
+
+<span class="com"># Step 1: Setup LLM</span>
+llm = ChatGoogleGenerativeAI(model=<span class="str">"gemini-1.5-flash"</span>, temperature=0)
+
+<span class="com"># Step 2: Create tools (Using previous functions)</span>
+tools = [
+    Tool(
+        name=<span class="str">"Multiply"</span>,
+        func=<span class="kwd">lambda</span> x: str(float(x.split(<span class="str">'*'</span>)[0]) * float(x.split(<span class="str">'*'</span>)[1])),
+        description=<span class="str">"Multiplies two numbers. Input: 'num1 * num2'"</span>
+    ),
+    Tool(
+        name=<span class="str">"Add"</span>,
+        func=<span class="kwd">lambda</span> x: str(float(x.split(<span class="str">'+'</span>)[0]) + float(x.split(<span class="str">'+'</span>)[1])),
+        description=<span class="str">"Adds two numbers. Input: 'num1 + num2'"</span>
+    )
+]
+
+<span class="com"># Step 3: Get ReAct prompt</span>
+prompt = hub.pull(<span class="str">"hwchase17/react"</span>)
+
+<span class="com"># Step 4: Create agent</span>
+agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
+
+<span class="com"># Step 5: Create executor</span>
+agent_executor = AgentExecutor(
+    agent=agent, 
+    tools=tools, 
+    verbose=<span class="kwd">True</span> <span class="com"># Shows thinking process</span>
+)
+
+<span class="com"># Step 6: Run</span>
+response = agent_executor.invoke({
+    <span class="str">"input"</span>: <span class="str">"What is 25 multiplied by 4, then add 100?"</span>
+})
+
+<span class="fun">print</span>(<span class="str">"\nFINAL ANSWER:"</span>, response[<span class="str">'output'</span>])
+</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>CHAPTER 5: TYPES OF AGENTS</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Agent Type</th>
+                        <th>Best For</th>
+                        <th>Key Feature</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ReAct Agent</strong></td>
+                        <td>General Tasks</td>
+                        <td>Shows Thought/Action loop. Most common.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Zero-Shot Description</strong></td>
+                        <td>Many Tools</td>
+                        <td>Chooses tools strictly based on description.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Conversational ReAct</strong></td>
+                        <td>Chatbots</td>
+                        <td>Has memory, remembers context.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OpenAI Functions</strong></td>
+                        <td>OpenAI Models</td>
+                        <td>More reliable tool calling via API.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>CHAPTER 6: PRE-BUILT TOOLS</h2>
+            
+            <h3>EXAMPLE 4: Wikipedia & DuckDuckGo Search</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example4_web_agent.py</span>
+                </div>
+<pre>
+<span class="com"># !pip install wikipedia duckduckgo-search</span>
+<span class="kwd">from</span> langchain.tools <span class="kwd">import</span> WikipediaQueryRun, DuckDuckGoSearchRun
+<span class="kwd">from</span> langchain.utilities <span class="kwd">import</span> WikipediaAPIWrapper
+
+<span class="com"># Setup</span>
+llm = ChatGoogleGenerativeAI(model=<span class="str">"gemini-1.5-flash"</span>, temperature=0)
+
+<span class="com"># Create Tools</span>
+wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+search = DuckDuckGoSearchRun()
+tools = [wikipedia, search]
+
+<span class="com"># Create & Run Agent</span>
+agent = create_react_agent(llm=llm, tools=tools, prompt=hub.pull(<span class="str">"hwchase17/react"</span>))
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=<span class="kwd">True</span>)
+
+response = agent_executor.invoke({
+    <span class="str">"input"</span>: <span class="str">"Who is the CEO of Tesla and what is their latest project?"</span>
+})
+<span class="fun">print</span>(response[<span class="str">'output'</span>])
+</pre>
+            </div>
+
+            <h3>EXAMPLE 5: Python REPL Tool (Run Code)</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example5_python_repl.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.tools <span class="kwd">import</span> PythonREPLTool
+
+<span class="com"># Create Tool</span>
+python_repl = PythonREPLTool()
+tools = [python_repl]
+
+<span class="com"># Create Agent</span>
+agent = create_react_agent(llm=llm, tools=tools, prompt=hub.pull(<span class="str">"hwchase17/react"</span>))
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=<span class="kwd">True</span>)
+
+<span class="com"># Ask to write code</span>
+response = agent_executor.invoke({
+    <span class="str">"input"</span>: <span class="str">"Create a list of squares from 1 to 10 and calculate sum"</span>
+})
+<span class="fun">print</span>(response[<span class="str">'output'</span>])
+</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>CHAPTER 7: MEMORY - Making AI Remember</h2>
+            
+
+[Image of AI conversational memory integration architecture]
+
+            
+            <h3>🧠 Why Memory?</h3>
+            <div class="comparison-grid">
+                <div>
+                    <h4>❌ Without Memory</h4>
+                    <div class="chat-ui">
+                        <div class="msg user">My name is John</div>
+                        <div class="msg bot">Hi John!</div>
+                        <div class="system-msg">[Memory Cleared]</div>
+                        <div class="msg user">What's my name?</div>
+                        <div class="msg bot">I don't know. 😞</div>
+                    </div>
+                </div>
+                <div>
+                    <h4>✅ With Memory</h4>
+                    <div class="chat-ui">
+                        <div class="msg user">My name is John</div>
+                        <div class="msg bot">Hi John!</div>
+                        <div class="system-msg">[Saved to Memory]</div>
+                        <div class="msg user">What's my name?</div>
+                        <div class="msg bot">Your name is John! 😊</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Memory Types</h3>
+            <ul>
+                <li><strong>ConversationBufferMemory:</strong> Stores EVERYTHING. Simple but token heavy.</li>
+                <li><strong>ConversationBufferWindowMemory:</strong> Stores last N messages. Prevents overflow.</li>
+                <li><strong>ConversationSummaryMemory:</strong> Stores a summary of the chat.</li>
+                <li><strong>ConversationEntityMemory:</strong> Remembers specific facts (Names, Places).</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>CHAPTER 8: IMPLEMENTING MEMORY</h2>
+
+            <h3>EXAMPLE 6: ConversationBufferMemory (Basic)</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example6_buffer_memory.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.memory <span class="kwd">import</span> ConversationBufferMemory
+<span class="kwd">from</span> langchain.chains <span class="kwd">import</span> ConversationChain
+
+memory = ConversationBufferMemory()
+
+conversation = ConversationChain(
+    llm=llm,
+    memory=memory,
+    verbose=<span class="kwd">True</span>
+)
+
+<span class="com"># Conversation 1</span>
+conversation.predict(input=<span class="str">"Hi! My name is Sarah."</span>)
+
+<span class="com"># Conversation 2 - AI Remembers!</span>
+response = conversation.predict(input=<span class="str">"What's my name?"</span>)
+<span class="fun">print</span>(response) <span class="com"># Output: "Your name is Sarah"</span>
+</pre>
+            </div>
+
+            <h3>EXAMPLE 7: ConversationBufferWindowMemory (Last N)</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example7_window_memory.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.memory <span class="kwd">import</span> ConversationBufferWindowMemory
+
+<span class="com"># Only remember last 2 interactions</span>
+memory = ConversationBufferWindowMemory(k=2) 
+
+conversation = ConversationChain(llm=llm, memory=memory)
+
+conversation.predict(input=<span class="str">"I like Blue"</span>)
+conversation.predict(input=<span class="str">"I like Pizza"</span>)
+conversation.predict(input=<span class="str">"I like Coding"</span>)
+
+<span class="com"># Ask about Blue (It forgot, because it was 3 turns ago)</span>
+response = conversation.predict(input=<span class="str">"What color do I like?"</span>)
+<span class="fun">print</span>(response) <span class="com"># AI might not know</span>
+</pre>
+            </div>
+
+            <h3>EXAMPLE 8: ConversationSummaryMemory</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example8_summary_memory.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.memory <span class="kwd">import</span> ConversationSummaryMemory
+
+<span class="com"># Uses LLM to summarize conversation constantly</span>
+memory = ConversationSummaryMemory(llm=llm)
+
+conversation = ConversationChain(llm=llm, memory=memory, verbose=<span class="kwd">True</span>)
+
+conversation.predict(input=<span class="str">"I am a software engineer in SF."</span>)
+conversation.predict(input=<span class="str">"I have been coding for 10 years."</span>)
+
+<span class="fun">print</span>(memory.load_memory_variables({}))
+<span class="com"># Output: "The human is a software engineer in SF with 10 years exp."</span>
+</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>CHAPTER 9: MEMORY WITH AGENTS</h2>
+            
+            <h3>🔗 Combining Agents + Memory</h3>
+            <p>Agents with memory can execute tasks while remembering context from previous turns.</p>
+
+            <h3>EXAMPLE 9: Agent with Conversational Memory</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+                    <span class="code-title">example9_agent_memory.py</span>
+                </div>
+<pre>
+<span class="kwd">from</span> langchain.agents <span class="kwd">import</span> create_react_agent, AgentExecutor
+<span class="kwd">from</span> langchain.memory <span class="kwd">import</span> ConversationBufferMemory
+<span class="kwd">from</span> langchain.tools <span class="kwd">import</span> Tool
+
+<span class="com"># 1. Setup Memory</span>
+memory = ConversationBufferMemory(
+    memory_key=<span class="str">"chat_history"</span>,
+    return_messages=<span class="kwd">True</span>
+)
+
+<span class="com"># 2. Simple Tools</span>
+<span class="kwd">def</span> <span class="fun">calc</span>(x): <span class="kwd">return</span> str(eval(x))
+tools = [Tool(name=<span class="str">"Calc"</span>, func=calc, description=<span class="str">"Math tool"</span>)]
+
+<span class="com"># 3. Create Agent</span>
+agent = create_react_agent(llm=llm, tools=tools, prompt=hub.pull(<span class="str">"hwchase17/react"</span>))
+
+<span class="com"># 4. Executor WITH Memory</span>
+agent_executor = AgentExecutor(
+    agent=agent,
+    tools=tools,
+    memory=memory, <span class="com"># <--- CRITICAL: Pass memory here</span>
+    verbose=<span class="kwd">True</span>
+)
+
+<span class="com"># 5. Usage</span>
+<span class="fun">print</span>(<span class="str">"Q1:"</span>)
+agent_executor.invoke({<span class="str">"input"</span>: <span class="str">"Calculate 50 * 20"</span>})
+
+<span class="fun">print</span>(<span class="str">"\nQ2:"</span>)
+<span class="com"># The agent remembers the previous answer (1000)</span>
+agent_executor.invoke({<span class="str">"input"</span>: <span class="str">"What was that result plus 500?"</span>})
+</pre>
+            </div>
+        </section>
+
+    </div>
+
+    <footer style="text-align: center; color: #6b7280; padding: 40px; border-top: 1px solid var(--border);">
+        <p>LangChain Agents & Memory Complete Guide</p>
+    </footer>
+</div>
+
+</body>
+</html>
